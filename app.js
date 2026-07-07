@@ -3,7 +3,7 @@
    Integrated with Supabase backend + Transport Pickup System
    ======================================================= */
 
-import supabase, {
+import {
   signupParent, loginUser, requestPasswordRecovery, getCurrentSession, logoutUser,
   createStudent, getParentStudents, getStudent, updateStudent,
   saveFamilyDetails, getFamilyDetails,

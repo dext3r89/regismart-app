@@ -5,6 +5,8 @@ const supabase = createClient(
   'sb_publishable_e0bpDBnMRDkqbFebnloPhQ_qxsjVgqK'
 );
 
+export default supabase;
+
 // =====================================================
 // AUTH FUNCTIONS
 // =====================================================
@@ -40,6 +42,18 @@ export async function loginUser(email, password) {
     if (profileError) throw profileError;
 
     return { success: true, user: data.user, profile };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function requestPasswordRecovery(email) {
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/login.html'
+    });
+    if (error) throw error;
+    return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
