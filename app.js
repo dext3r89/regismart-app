@@ -4,7 +4,7 @@
    ======================================================= */
 
 import supabase, {
-  signupParent, loginUser, getCurrentSession, logoutUser,
+  signupParent, loginUser, requestPasswordRecovery, getCurrentSession, logoutUser,
   createStudent, getParentStudents, getStudent, updateStudent,
   saveFamilyDetails, getFamilyDetails,
   saveMedicalInfo, getMedicalInfo,
@@ -116,6 +116,12 @@ async function loginUserAccount(email, password) {
     session,
     pendingStudent
   };
+}
+
+async function requestPasswordRecoveryAction(email) {
+  const result = await requestPasswordRecovery(email);
+  if (!result.success) return { success: false, message: result.error };
+  return { success: true };
 }
 
 async function logoutUserAccount() {
@@ -403,7 +409,7 @@ async function searchParents(query) {
 export {
   getSession, cacheSessionForUI, getCachedSession,
   storePendingStudentRegistration, getPendingStudentRegistration, clearPendingStudentRegistration,
-  signupParentAccount, loginUserAccount, logoutUserAccount,
+  signupParentAccount, loginUserAccount, logoutUserAccount, requestPasswordRecoveryAction,
   registerStudent, getMyStudents, getFullStudentProfile, updateStudentInfo,
   saveFamilyDetailsData, getFamilyDetailsData,
   saveMedicalInfoData, getMedicalInfoData,

@@ -8,6 +8,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <link href="styles.css" rel="stylesheet"/>
   <style>
+    body {
+      min-height: 100vh;
+      background-color: #f8fafc;
+      background-image: url('assets/backsplash.png');
+      background-repeat: repeat;
+      background-position: center top;
+      background-size: auto;
+    }
+    .auth-wrapper {
+      background: transparent;
+    }
     .role-tab-btn {
       width: 100%;
       padding: 12px 8px;
@@ -38,7 +49,7 @@
   <div class="auth-card card">
     <div class="card-body p-4 p-md-5">
 
-      <div class="auth-logo">🎒 RegiSmart</div>
+      <div class="auth-logo">🦉 RegiSmart</div>
       <p class="auth-tagline">School Registration &amp; Pickup System</p>
 
       <!-- EXISTING SESSION BANNER -->
@@ -88,6 +99,12 @@
         </div>
 
         <div id="login-error" class="alert alert-danger" style="display:none;"></div>
+        <div id="recover-link" class="mb-3" style="display:none; font-size:0.95rem;">
+          <a href="#" class="fw-bold text-decoration-none" style="color:#d63384;"
+             onclick="handlePasswordRecovery(event)">
+             Forgot your password? Reset it here.
+          </a>
+        </div>
 
         <button class="btn btn-primary w-100 mb-3" id="login-btn" onclick="handleLogin()">
           🔐 Log In
@@ -105,7 +122,7 @@
 </div>
 
 <script type="module">
-  import { getCachedSession, loginUserAccount, logoutUserAccount, cacheSessionForUI } from './app.js';
+  import { getCachedSession, loginUserAccount, logoutUserAccount, requestPasswordRecoveryAction } from './app.js';
 
   let selectedRole = null;
 
@@ -116,7 +133,7 @@
     
     const banner = document.getElementById('session-banner');
     banner.style.display = 'block';
-    const labels = { admin:'🛡️ Admin', teacher:'👩‍🏫 Teacher', parent:'👨‍👩‍👧 Parent' };
+    const labels = { admin:' Admin', teacher:' Teacher', parent:' Parent' };
     document.getElementById('session-msg').textContent =
       'Already logged in as ' + labels[session.role] + ': ' + session.name;
     document.getElementById('session-continue-btn').onclick = () => redirectByRole(session.role);
@@ -164,6 +181,7 @@
 
   window.handleLogin = async function() {
     document.getElementById('login-error').style.display = 'none';
+    document.getElementById('recover-link').style.display = 'none';
     
     if (!selectedRole) {
       document.getElementById('login-error').style.display = 'block';
@@ -192,6 +210,7 @@
       if (!result.success) {
         document.getElementById('login-error').style.display = 'block';
         document.getElementById('login-error').textContent = '❌ ' + result.message;
+        document.getElementById('recover-link').style.display = 'block';
         btn.disabled = false;
         btn.textContent = originalText;
         return;
@@ -220,6 +239,46 @@
     if (role === 'teacher')      window.location.href = 'teacher.html';
     else if (role === 'admin')   window.location.href = 'admin.html';
     else                         window.location.href = 'parent.html';
+  };
+
+  window.handlePasswordRecovery = async function(event) {
+    event.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+      document.getElementById('login-error').className = 'alert alert-danger';
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-error').textContent = '⚠️ Enter your email address first to receive a recovery link.';
+      return;
+    }
+
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('recover-link').style.display = 'none';
+
+    const btn = document.getElementById('login-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Sending recovery email...';
+
+    try {
+      const result = await requestPasswordRecoveryAction(email);
+      if (!result.success) {
+        document.getElementById('login-error').className = 'alert alert-danger';
+        document.getElementById('login-error').style.display = 'block';
+        document.getElementById('login-error').textContent = '❌ ' + result.message;
+        return;
+      }
+
+      document.getElementById('login-error').className = 'alert alert-success';
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-error').textContent = '✅ Recovery email sent. Check your inbox and follow the instructions.';
+    } catch (error) {
+      document.getElementById('login-error').className = 'alert alert-danger';
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-error').textContent = '❌ Password recovery failed: ' + error.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   };
 
   document.addEventListener('keydown', e => { if (e.key === 'Enter') window.handleLogin(); });
