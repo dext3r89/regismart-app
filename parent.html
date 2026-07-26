@@ -19,6 +19,7 @@
       transition:border-color 0.2s,background 0.2s;
     }
     .student-select-btn:hover { border-color:#1a73e8; background:#eff6ff; }
+    .editable-field { border-color:#1a73e8 !important; box-shadow:0 0 0 0.15rem rgba(26,115,232,0.12); }
 
     /* New transport status colours */
     .status-pending-transport     { background:#ede9fe; color:#5b21b6; }
@@ -79,13 +80,13 @@
         <span> My Child's Status</span>
         <button class="btn btn-sm text-white fw-bold"
                 style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);"
-                onclick="window.refreshStatus()">🔄 Refresh</button>
+                onclick="window.refreshStatus()"> Refresh</button>
       </div>
       <div class="card-body p-4">
         <div id="search-area">
           <div class="input-group mb-3">
             <input type="text" id="parent-search" class="form-control"
-                   placeholder="Search your child's name…" oninput="window.parentSearch()"/>
+                   placeholder="Search your child's name…" oninput="window.parentSearch(this.value)" autocomplete="off"/>
             <button class="btn btn-outline-secondary" onclick="window.parentSearch()">🔎</button>
           </div>
         </div>
@@ -106,19 +107,19 @@
           <li class="nav-item">
             <button class="nav-link active" id="tab-family"
                     onclick="window.switchTab('family')" style="font-weight:700;">
-              👨‍👩‍👧 Family
+               Family
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="tab-medical"
                     onclick="window.switchTab('medical')" style="font-weight:700;">
-              🏥 Medical
+               Medical
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="tab-transport"
                     onclick="window.switchTab('transport')" style="font-weight:700;">
-              🚐 Transport
+               Transport
             </button>
           </li>
         </ul>
@@ -126,11 +127,17 @@
 
       <!-- ===== FAMILY PANEL ===== -->
       <div class="card-body p-4" id="panel-family">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+          <h5 class="fw-bold mb-0">Family Details</h5>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.toggleEdit('family')">
+            Edit
+          </button>
+        </div>
         <p class="text-muted mb-4" style="font-size:0.9rem;">
           Keep both parents' contact details up to date for emergency contact and pickup verification.
         </p>
 
-        <div class="section-title" style="margin-top:0;">👩 Mother / Guardian 1</div>
+        <div class="section-title" style="margin-top:0;"> Mother / Guardian 1</div>
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label class="form-label fw-bold">Name</label>
@@ -158,7 +165,7 @@
           </div>
         </div>
 
-        <div class="section-title">👨 Father / Guardian 2</div>
+        <div class="section-title"> Father / Guardian 2</div>
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label class="form-label fw-bold">Name</label>
@@ -189,13 +196,19 @@
         <div id="family-error"   class="alert alert-danger  mt-3" style="display:none;"></div>
         <div id="family-success" class="alert alert-success mt-3" style="display:none;"></div>
 
-        <button class="btn btn-primary mt-2" id="save-family-btn" onclick="window.saveFamily()">
+        <button class="btn btn-primary mt-2" id="save-family-btn" onclick="window.saveFamily()" disabled>
           💾 Save Family Information
         </button>
       </div>
 
       <!-- ===== MEDICAL PANEL ===== -->
       <div class="card-body p-4" id="panel-medical" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+          <h5 class="fw-bold mb-0">Medical Details</h5>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.toggleEdit('medical')">
+            Edit
+          </button>
+        </div>
         <p class="text-muted mb-4" style="font-size:0.9rem;">
           This information is used in case of a medical emergency. Please keep it accurate.
         </p>
@@ -224,13 +237,19 @@
         </div>
         <div id="medical-error"   class="alert alert-danger  mt-3" style="display:none;"></div>
         <div id="medical-success" class="alert alert-success mt-3" style="display:none;"></div>
-        <button class="btn btn-primary mt-2" id="save-medical-btn" onclick="window.saveMedical()">
+        <button class="btn btn-primary mt-2" id="save-medical-btn" onclick="window.saveMedical()" disabled>
           💾 Save Medical Information
         </button>
       </div>
 
       <!-- ===== TRANSPORT PANEL (NEW) ===== -->
       <div class="card-body p-4" id="panel-transport" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+          <h5 class="fw-bold mb-0">Transport Details</h5>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.toggleEdit('transport')">
+            Edit
+          </button>
+        </div>
 
         <p class="text-muted mb-4" style="font-size:0.9rem;">
           Register your child's transport provider here. The teacher will see this information
@@ -286,7 +305,7 @@
         <div id="transport-error"   class="alert alert-danger  mb-3" style="display:none;"></div>
         <div id="transport-success" class="alert alert-success mb-3" style="display:none;"></div>
 
-        <button class="btn btn-primary" id="save-transport-btn" onclick="window.saveTransport()">
+        <button class="btn btn-primary" id="save-transport-btn" onclick="window.saveTransport()" disabled>
           💾 Save Transport Details
         </button>
 
@@ -296,7 +315,7 @@
 
   </div>
 
-  <footer>RegiSmart &copy; 2025 – Parent Portal 👨‍👩‍👧</footer>
+  <footer>RegiSmart &copy; 2025 – Parent Portal </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -355,35 +374,42 @@
     }
 
     function showStudentSelector() {
-      let html = '<p class="fw-bold mb-3" style="color:#1a237e;">Select a child to view their details:</p><div class="row g-2">';
+      activeStudentId = null;
+      let html = '<div id="child-list-section"><p class="fw-bold mb-3" style="color:#1a237e;">Select a child to view their details:</p><div class="row g-2" id="child-list-container">';
       allStudents.forEach(s => {
+        const status = s.attendance_logs?.[0]?.status || 'Not Checked In';
         html += `<div class="col-md-6">
-          <button class="student-select-btn" onclick="window.selectStudent('${s.id}')">
-            <strong>🎒 ${s.full_name}</strong><br/>
-            <span class="text-muted" style="font-size:0.85rem;">${s.grade}</span>
+          <button class="student-select-btn child-btn" data-name="${escapeHtml(s.full_name)}" onclick="window.selectStudent('${s.id}')">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <strong>${escapeHtml(s.full_name)}</strong>
+              <span class="badge ${getStatusColor(status)}">${escapeHtml(status)}</span>
+            </div>
+            <span class="text-muted" style="font-size:0.85rem;">Grade: ${escapeHtml(s.grade || '')}</span>
           </button></div>`;
       });
-      html += '</div>';
+      html += '</div><div id="child-search-empty" class="alert alert-danger mt-3" style="display:none;">No child found with that name.</div></div>';
       document.getElementById('parent-result').innerHTML = html;
       document.getElementById('info-card').style.display = 'none';
     }
 
-    window.parentSearch = function () {
-      const query = fv('parent-search').toLowerCase();
-      if (!query) {
-        if (allStudents.length === 1) selectStudent(allStudents[0].id);
-        else showStudentSelector();
-        return;
+    window.parentSearch = function (searchTerm = null) {
+      if (!document.getElementById('child-list-section')) {
+        showStudentSelector();
       }
-      const found = allStudents.filter(s => s.full_name.toLowerCase().includes(query));
-      if (found.length === 0) {
-        document.getElementById('parent-result').innerHTML =
-          '<div class="alert alert-danger">❌ No child found with that name.</div>';
-        document.getElementById('info-card').style.display = 'none';
-        return;
-      }
-      if (found.length === 1) selectStudent(found[0].id);
-      else { allStudents = found; showStudentSelector(); }
+
+      const term = String(searchTerm ?? fv('parent-search')).toLowerCase().trim();
+      const buttons = document.querySelectorAll('#child-list-container .child-btn');
+      let visibleCount = 0;
+
+      buttons.forEach(btn => {
+        const name = (btn.getAttribute('data-name') || '').toLowerCase();
+        const isVisible = name.includes(term);
+        btn.closest('.col-md-6').style.display = isVisible ? 'block' : 'none';
+        if (isVisible) visibleCount += 1;
+      });
+
+      const emptyEl = document.getElementById('child-search-empty');
+      if (emptyEl) emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
     };
 
     // =============================================
@@ -403,8 +429,6 @@
         }
 
         activeStudentId = studentId;
-        if (profile.student) setFv('parent-search', profile.student.full_name);
-
         renderStatusCard(profile);
         populateForms(profile);
         document.getElementById('info-card').style.display = 'block';
@@ -810,6 +834,74 @@
         errEl.style.display = 'block'; errEl.textContent = '❌ Error: ' + err.message;
       } finally {
         btn.disabled = false; btn.textContent = '💾 Save Transport Details';
+      }
+    };
+
+    // =============================================
+    // HELPERS
+    // =============================================
+
+    /**
+     * Escape a value for safe insertion into innerHTML.
+     * Prevents XSS when rendering user-supplied data (names, grades, etc.).
+     * Matches the implementation in teacher.html.
+     */
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    /**
+     * Return a Bootstrap badge class string for a given student status.
+     * Used in the child-selector cards rendered by showStudentSelector().
+     * Colours match the status-badge CSS classes in styles.css.
+     */
+    function getStatusColor(status) {
+      switch (status) {
+        case 'At School':               return 'bg-success';
+        case 'Pending Pickup':          return 'bg-warning text-dark';
+        case 'Pending Transport':       return 'text-white';   // purple — set via style below
+        case 'Checked Out':             return 'bg-secondary';
+        case 'Checked Out (Transport)': return 'bg-success';
+        default:                        return 'bg-light text-dark';
+      }
+    }
+
+    /**
+     * Enable the save button for the given section when the Edit button is clicked.
+     * The save buttons start as `disabled` in the HTML so parents cannot
+     * accidentally overwrite data before reviewing it.
+     *
+     * @param {'family'|'medical'|'transport'} section
+     */
+    window.toggleEdit = function (section) {
+      const saveBtn   = document.getElementById('save-' + section + '-btn');
+      const editBtn   = event?.currentTarget;      // the button that was clicked
+
+      if (!saveBtn) return;
+
+      const isNowEditing = saveBtn.disabled;       // if currently disabled → we are enabling
+
+      saveBtn.disabled = !isNowEditing;
+
+      // Update the edit button label to make the state clear
+      if (editBtn) {
+        editBtn.textContent = isNowEditing ? '✕ Cancel' : '✏️ Edit';
+        editBtn.classList.toggle('btn-outline-primary', !isNowEditing);
+        editBtn.classList.toggle('btn-outline-secondary', isNowEditing);
+      }
+
+      // Highlight editable fields visually while in edit mode
+      const panel = document.getElementById('panel-' + section);
+      if (panel) {
+        panel.querySelectorAll('.form-control, .form-select').forEach(el => {
+          el.classList.toggle('editable-field', isNowEditing);
+        });
       }
     };
 

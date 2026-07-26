@@ -71,17 +71,17 @@
         <p class="fw-bold mb-2" style="color:#1a237e;">Select your role to log in:</p>
         <div class="row g-2 mb-4">
           <div class="col-4">
-            <button class="role-tab-btn" id="tab-parent" onclick="setRole('parent')">
+            <button class="role-tab-btn" id="tab-parent" data-role="parent" type="button">
               👨‍👩‍👧<br/>Parent
             </button>
           </div>
           <div class="col-4">
-            <button class="role-tab-btn" id="tab-teacher" onclick="setRole('teacher')">
+            <button class="role-tab-btn" id="tab-teacher" data-role="teacher" type="button">
               👩‍🏫<br/>Teacher
             </button>
           </div>
           <div class="col-4">
-            <button class="role-tab-btn" id="tab-admin" onclick="setRole('admin')">
+            <button class="role-tab-btn" id="tab-admin" data-role="admin" type="button">
               🛡️<br/>Admin
             </button>
           </div>
@@ -107,7 +107,7 @@
         </div>
 
         <button class="btn btn-primary w-100 mb-3" id="login-btn" onclick="handleLogin()">
-          🔐 Log In
+           Log In
         </button>
 
         <div class="auth-divider"></div>
@@ -148,7 +148,7 @@
     document.getElementById('login-form-area').style.display = 'block';
   };
 
-  window.setRole = function(role) {
+  function setRole(role) {
     selectedRole = role;
     ['parent','teacher','admin'].forEach(r => {
       document.getElementById('tab-' + r).className = 'role-tab-btn';
@@ -177,7 +177,12 @@
       document.getElementById('login-password').value = '';
     }
     document.getElementById('login-error').style.display = 'none';
-  };
+  }
+  window.setRole = setRole;
+
+  document.querySelectorAll('.role-tab-btn[data-role]').forEach(button => {
+    button.addEventListener('click', () => setRole(button.dataset.role));
+  });
 
   window.handleLogin = async function() {
     document.getElementById('login-error').style.display = 'none';
@@ -286,6 +291,6 @@
   // Pre-select role from URL param
   (function () {
     const role = new URLSearchParams(window.location.search).get('role');
-    if (['admin','teacher','parent'].includes(role)) window.setRole(role);
+    if (['admin','teacher','parent'].includes(role)) setRole(role);
   })();
 </script>

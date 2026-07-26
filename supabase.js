@@ -105,7 +105,12 @@ export async function createStudent(parentId, fullName, grade, homeAddress) {
 export async function getParentStudents(parentId) {
   try {
     const { data, error } = await supabase
-      .from('students').select('*').eq('parent_id', parentId);
+      .from('students')
+      .select(`
+        *,
+        attendance_logs(status, updated_at)
+      `)
+      .eq('parent_id', parentId);
     if (error) throw error;
     return { success: true, students: data };
   } catch (error) {
@@ -294,9 +299,10 @@ export async function getTransportDetails(studentId) {
 // ATTENDANCE FUNCTIONS
 // =====================================================
 
-export async function recordAttendance(studentId, status, verifyCode = null) {
+export async function recordAttendance(studentId, status, verifyCode = null, timestamp = null) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const updatedAt = timestamp || new Date().toISOString();
+    const today = new Date(updatedAt).toISOString().split('T')[0];
 
     const { data: existing } = await supabase
       .from('attendance_logs').select('id')
@@ -306,11 +312,11 @@ export async function recordAttendance(studentId, status, verifyCode = null) {
     let result;
     if (existing) {
       result = await supabase.from('attendance_logs')
-        .update({ status, verify_code: verifyCode, updated_at: new Date().toISOString() })
+        .update({ status, verify_code: verifyCode, updated_at: updatedAt })
         .eq('id', existing.id).select();
     } else {
       result = await supabase.from('attendance_logs')
-        .insert([{ student_id: studentId, status, verify_code: verifyCode }]).select();
+        .insert([{ student_id: studentId, status, verify_code: verifyCode, updated_at: updatedAt }]).select();
     }
     if (result.error) throw result.error;
     return { success: true, data: result.data[0] };
@@ -331,8 +337,8 @@ export async function getAttendanceLog(studentId) {
   }
 }
 
-export async function checkInStudent(studentId) {
-  return recordAttendance(studentId, 'At School', null);
+export async function checkInStudent(studentId, timestamp = null) {
+  return recordAttendance(studentId, 'At School', null, timestamp);
 }
 
 /**
@@ -340,10 +346,10 @@ export async function checkInStudent(studentId) {
  * @param {string} studentId
  * @param {'parent'|'transport'} method  - determines status set
  */
-export async function checkOutStudent(studentId, method = 'parent') {
+export async function checkOutStudent(studentId, method = 'parent', timestamp = null) {
   const verifyCode = Math.floor(1000 + Math.random() * 9000);
   const status     = method === 'transport' ? 'Pending Transport' : 'Pending Pickup';
-  return recordAttendance(studentId, status, verifyCode);
+  return recordAttendance(studentId, status, verifyCode, timestamp);
 }
 
 /**
@@ -381,5 +387,3 @@ export async function confirmTransportPickup(studentId, enteredCode) {
     return { success: false, error: error.message };
   }
 }
-
-export default supabase;

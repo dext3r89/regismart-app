@@ -133,7 +133,7 @@
         <span>🔍 Find Student</span>
         <button class="btn btn-sm text-white fw-bold"
                 style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);"
-                onclick="window.refreshAll()">🔄 Refresh</button>
+                onclick="window.refreshAll()"> Refresh</button>
       </div>
       <div class="card-body p-4">
 
@@ -167,6 +167,24 @@
           </div>
           <div id="scanner-status" class="info-box mb-3" style="display:none;"></div>
           <div id="scanner-found" style="display:none;"></div>
+
+          <div id="batch-panel" style="display:none;" class="mt-4">
+            <h6 class="fw-bold">Scanned Students (<span id="batch-count">0</span>)</h6>
+            <div id="batch-list" class="mb-3"></div>
+            <div id="batch-error" class="alert alert-danger mb-3" style="display:none;"></div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-success flex-fill" onclick="window.batchAction('checkin')">
+                Batch Check-In
+              </button>
+              <button class="btn btn-warning text-white flex-fill" onclick="window.batchAction('checkout')">
+                Batch Check-Out
+              </button>
+              <!--button class="btn text-white flex-fill" style="background:#7c3aed;" onclick="window.batchAction('transport')">
+                Transport Pickup
+              </button-->>
+              <button class="btn btn-outline-danger" onclick="window.clearBatch()">Clear All</button>
+            </div>
+          </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-primary" id="start-scan-btn" onclick="window.startScanner()">
               📷 Start Camera
@@ -206,7 +224,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content" style="border-radius:16px;border:none;">
         <div class="modal-header bg-primary text-white" style="border-radius:16px 16px 0 0;">
-          <h5 class="modal-title fw-bold">🚪 Select Pickup Method</h5>
+          <h5 class="modal-title fw-bold"> Select Pickup Method</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-4">
@@ -214,18 +232,11 @@
           <p class="text-muted mb-4" style="font-size:0.88rem;">How will this student be going home today?</p>
 
           <div class="row g-3">
-            <div class="col-6">
+            <div class="col-12">
               <div class="method-card method-parent" onclick="window.selectPickupMethod('parent')">
                 <div class="method-icon">👨‍👩‍👧</div>
                 <div class="method-label">Parent Pickup</div>
                 <div class="method-desc">Generate OTP for parent to confirm</div>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="method-card method-transport" onclick="window.selectPickupMethod('transport')">
-                <div class="method-icon">🚐</div>
-                <div class="method-label">Transport Pickup</div>
-                <div class="method-desc">Verify registered driver details</div>
               </div>
             </div>
           </div>
@@ -327,8 +338,27 @@
       </div>
     </div>
   </div>
+  <div class="modal fade" id="batchConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius:16px;border:none;">
+        <div class="modal-header bg-primary text-white" style="border-radius:16px 16px 0 0;" id="batch-modal-header">
+          <h5 class="modal-title fw-bold" id="batch-modal-title">Confirm Batch Action</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="batch-modal-summary" class="alert alert-info mb-3"></div>
+          <div id="batch-modal-list"></div>
+          <div id="batch-modal-error" class="alert alert-danger mt-3" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary fw-bold" id="batch-confirm-btn">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <footer>RegiSmart &copy; 2025 – Teacher Portal 👩‍🏫</footer>
+  <footer>RegiSmart &copy; 2025 – Teacher Portal </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -345,9 +375,11 @@
     // STATE
     // =============================================
     let students       = [];
-    let codeModal, pickupMethodModal, transportCodeModal;
+    let batchStudents  = [];
+    let codeModal, pickupMethodModal, transportCodeModal, batchConfirmModal;
     let scannerStream  = null;
     let scannerRunning = false;
+    let scannerCoolingDown = false;
     let currentMode    = 'search';
 
     // Pending checkout info (set when teacher clicks Check-Out)
@@ -365,6 +397,7 @@
       codeModal          = new bootstrap.Modal(document.getElementById('codeModal'));
       pickupMethodModal  = new bootstrap.Modal(document.getElementById('pickupMethodModal'));
       transportCodeModal = new bootstrap.Modal(document.getElementById('transportCodeModal'));
+      batchConfirmModal  = new bootstrap.Modal(document.getElementById('batchConfirmModal'));
 
       await refreshAll();
     }
@@ -420,23 +453,22 @@
       }
       renderStats();
       renderStudentList();
+      syncBatchStudents();
     };
 
     // =============================================
-    // STATS  (now tracks 5 statuses)
+    // STATS  (now tracks 4 statuses)
     // =============================================
     function renderStats() {
       const total         = students.length;
       const atSchool      = students.filter(s => s.currentStatus === 'At School').length;
       const pendingParent = students.filter(s => s.currentStatus === 'Pending Pickup').length;
-      const pendingTransp = students.filter(s => s.currentStatus === 'Pending Transport').length;
       const checkedOut    = students.filter(s => s.currentStatus === 'Checked Out' || s.currentStatus === 'Checked Out (Transport)').length;
 
       document.getElementById('stats-row').innerHTML = `
         ${chip(total,         'Total',            '#1a73e8')}
         ${chip(atSchool,      'At School',        '#0f9d58')}
         ${chip(pendingParent, 'Pending',          '#f9ab00')}
-        ${chip(pendingTransp, 'Pending Transport','#7c3aed')}
         ${chip(checkedOut,    'Checked Out',      '#e53935')}`;
     }
 
@@ -524,6 +556,194 @@
     }
 
     // =============================================
+    // BATCH SCAN CURATION
+    // =============================================
+    function syncBatchStudents() {
+      if (batchStudents.length === 0) {
+        renderBatchList();
+        return;
+      }
+
+      batchStudents = batchStudents
+        .map(batchStudent => students.find(s => s.id === batchStudent.id) || batchStudent)
+        .filter(Boolean);
+      renderBatchList();
+    }
+
+    function renderBatchList() {
+      const panel = document.getElementById('batch-panel');
+      const listEl = document.getElementById('batch-list');
+      const countEl = document.getElementById('batch-count');
+      const errorEl = document.getElementById('batch-error');
+      countEl.textContent = batchStudents.length;
+
+      if (batchStudents.length === 0) {
+        panel.style.display = 'none';
+        errorEl.style.display = 'none';
+        listEl.innerHTML = '';
+        return;
+      }
+
+      panel.style.display = 'block';
+      listEl.innerHTML = batchStudents.map(s => `
+        <div class="d-flex justify-content-between align-items-center p-2 mb-1" style="background:#f8fafc;border-radius:8px;">
+          <div>
+            <span class="fw-bold">${escapeHtml(s.full_name)}</span>
+            <span class="status-badge ${getStatusClass(s.currentStatus)} ms-2" style="font-size:0.72rem;padding:3px 9px;">
+              ${escapeHtml(s.currentStatus)}
+            </span>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromBatch('${escJs(s.id)}')">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function showBatchError(message) {
+      const errorEl = document.getElementById('batch-error');
+      errorEl.style.display = 'block';
+      errorEl.textContent = message;
+    }
+
+    function addStudentToBatch(student, statusEl) {
+      if (batchStudents.find(s => s.id === student.id)) {
+        statusEl.textContent = `${student.full_name} is already in the batch. Scan next student.`;
+        return;
+      }
+
+      if (student.currentStatus === 'Pending Pickup' || student.currentStatus === 'Pending Transport') {
+        statusEl.textContent = `${student.full_name} is already waiting for pickup confirmation.`;
+        return;
+      }
+
+      batchStudents.push(student);
+      renderBatchList();
+      document.getElementById('batch-error').style.display = 'none';
+      statusEl.textContent = `${student.full_name} added. Scan next student.`;
+    }
+
+    function validateBatchAction(actionType) {
+      if (batchStudents.length === 0) {
+        return 'No students scanned.';
+      }
+
+      const invalidForCheckIn = batchStudents.filter(s =>
+        s.currentStatus === 'At School' ||
+        s.currentStatus === 'Pending Pickup' ||
+        s.currentStatus === 'Pending Transport'
+      );
+      const invalidForCheckout = batchStudents.filter(s => s.currentStatus !== 'At School');
+
+      if (actionType === 'checkin' && invalidForCheckIn.length) {
+        return 'Cannot batch check in: ' + invalidForCheckIn.map(s => `${s.full_name} is ${s.currentStatus}`).join(', ') + '.';
+      }
+
+      if ((actionType === 'checkout' || actionType === 'transport') && invalidForCheckout.length) {
+        return 'Cannot batch check out: ' + invalidForCheckout.map(s => `${s.full_name} is ${s.currentStatus}`).join(', ') + '.';
+      }
+
+      if (actionType === 'transport') {
+        const invalidTransport = batchStudents.find(s => !s.transport?.is_active);
+        if (invalidTransport) {
+          return `${invalidTransport.full_name} has no active transport profile. Remove them or use Parent Pickup.`;
+        }
+      }
+
+      return '';
+    }
+
+    window.removeFromBatch = function (studentId) {
+      batchStudents = batchStudents.filter(s => s.id !== studentId);
+      renderBatchList();
+    };
+
+    window.clearBatch = function () {
+      batchStudents = [];
+      renderBatchList();
+    };
+
+    window.batchAction = function (actionType) {
+      const validationMessage = validateBatchAction(actionType);
+      if (validationMessage) {
+        showBatchError(validationMessage);
+        return;
+      }
+
+      const isCheckIn = actionType === 'checkin';
+      const isTransport = actionType === 'transport';
+      const modalTitle = document.getElementById('batch-modal-title');
+      const modalHeader = document.getElementById('batch-modal-header');
+      const modalSummary = document.getElementById('batch-modal-summary');
+      const modalList = document.getElementById('batch-modal-list');
+      const modalError = document.getElementById('batch-modal-error');
+      const confirmBtn = document.getElementById('batch-confirm-btn');
+      const actionLabel = isCheckIn ? 'Batch Check-In' : isTransport ? 'Transport Pickup' : 'Parent Pickup';
+
+      modalHeader.style.background = isTransport ? '#7c3aed' : isCheckIn ? '#0f9d58' : '#f9ab00';
+      modalTitle.textContent = `Confirm ${actionLabel}`;
+      modalSummary.textContent = `${batchStudents.length} student${batchStudents.length === 1 ? '' : 's'} will be processed. Review every name before confirming.`;
+      modalError.style.display = 'none';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.className = isCheckIn
+        ? 'btn btn-success fw-bold'
+        : isTransport
+        ? 'btn text-white fw-bold'
+        : 'btn btn-warning text-white fw-bold';
+      if (isTransport) confirmBtn.style.background = '#7c3aed';
+      else confirmBtn.style.background = '';
+
+      modalList.innerHTML = batchStudents.map(s => `
+        <div class="d-flex justify-content-between align-items-center p-2 mb-1" style="background:#f8fafc;border-radius:8px;">
+          <div>
+            <span class="fw-bold">${escapeHtml(s.full_name)}</span>
+            <span class="text-muted ms-1" style="font-size:0.82rem;">${escapeHtml(s.grade || '')}</span>
+          </div>
+          <span class="otp-badge" id="batch-otp-${s.id}" style="display:none;background:#fffbeb;color:#92400e;border-radius:999px;padding:4px 10px;font-weight:800;"></span>
+        </div>
+      `).join('');
+
+      confirmBtn.onclick = async () => {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+        modalError.style.display = 'none';
+        const timestamp = new Date().toISOString();
+        const snapshot = [...batchStudents];
+
+        const results = await Promise.all(snapshot.map(async student => {
+          const result = isCheckIn
+            ? await checkInStudentAction(student.id, timestamp)
+            : await checkOutStudentAction(student.id, isTransport ? 'transport' : 'parent', timestamp);
+
+          if (result.success && !isCheckIn) {
+            const otpEl = document.getElementById(`batch-otp-${student.id}`);
+            if (otpEl) {
+              otpEl.style.display = 'inline-block';
+              otpEl.textContent = `OTP: ${result.verifyCode}`;
+            }
+          }
+
+          return { student, result };
+        }));
+
+        const failures = results.filter(item => !item.result.success);
+        if (failures.length) {
+          modalError.style.display = 'block';
+          modalError.textContent = 'Some students could not be processed: ' +
+            failures.map(item => `${item.student.full_name}: ${item.result.message || 'Unknown error'}`).join('; ');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Retry';
+          return;
+        }
+
+        confirmBtn.textContent = 'Done';
+        await refreshAll();
+        clearBatch();
+      };
+
+      batchConfirmModal.show();
+    };
+
+    // =============================================
     // NAME SEARCH
     // =============================================
     window.teacherSearch = function () {
@@ -584,18 +804,21 @@
       document.getElementById('scanner-video').srcObject = scannerStream;
       document.getElementById('scanner-area').style.display   = 'block';
       document.getElementById('scanner-line').style.display   = 'block';
+      document.getElementById('scanner-found').style.display  = 'none';
       document.getElementById('start-scan-btn').style.display = 'none';
       document.getElementById('stop-scan-btn').style.display  = 'inline-block';
       scannerRunning = true;
+      scannerCoolingDown = false;
       statusEl.style.display = 'block';
       statusEl.textContent   = '📷 Camera active — hold a student QR code up to the camera.';
       scanFrame();
     };
 
-    function scanFrame() {
+    async function scanFrame() {
       if (!scannerRunning) return;
       const video    = document.getElementById('scanner-video');
       const statusEl = document.getElementById('scanner-status');
+      if (scannerCoolingDown) { requestAnimationFrame(scanFrame); return; }
       if (video.readyState !== video.HAVE_ENOUGH_DATA) { requestAnimationFrame(scanFrame); return; }
 
       const canvas = document.createElement('canvas');
@@ -611,10 +834,10 @@
         if (parts[0] === 'RegiSmart' && parts[1]?.startsWith('ID:')) {
           const student = students.find(s => s.id === parts[1].replace('ID:', ''));
           if (student) {
-            stopScanner();
-            statusEl.style.display = 'none';
-            renderFoundStudent(student, 'scanner-found');
-            return;
+            addStudentToBatch(student, statusEl);
+            scannerCoolingDown = true;
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            scannerCoolingDown = false;
           } else {
             statusEl.textContent = '⚠️ QR found but student ID not in system. Try refreshing.';
           }
@@ -627,6 +850,7 @@
 
     window.stopScanner = function () {
       scannerRunning = false;
+      scannerCoolingDown = false;
       if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
       document.getElementById('scanner-video').srcObject          = null;
       document.getElementById('scanner-area').style.display      = 'none';
@@ -791,6 +1015,16 @@
     // =============================================
     // HELPERS
     // =============================================
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
     function escJs(str) {
       return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
     }

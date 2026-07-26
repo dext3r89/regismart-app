@@ -143,7 +143,13 @@ async function registerStudent(parentId, fullName, grade, homeAddress) {
 async function getMyStudents(parentId) {
   const result = await getParentStudents(parentId);
   if (!result.success) return { success: false, message: result.error };
-  return { success: true, students: result.students };
+  const students = (result.students || []).map(student => ({
+    ...student,
+    attendance_logs: (student.attendance_logs || []).sort(
+      (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+    )
+  }));
+  return { success: true, students };
 }
 
 /**
@@ -238,8 +244,8 @@ async function getTransportDetailsData(studentId) {
 // ATTENDANCE FUNCTIONS
 // =========================================================
 
-async function checkInStudentAction(studentId) {
-  const result = await checkInStudent(studentId);
+async function checkInStudentAction(studentId, timestamp = null) {
+  const result = await checkInStudent(studentId, timestamp);
   if (!result.success) return { success: false, message: result.error };
   return { success: true, data: result.data };
 }
@@ -250,8 +256,8 @@ async function checkInStudentAction(studentId) {
  * @param {'parent'|'transport'} method
  * @returns {{ success, verifyCode? }}
  */
-async function checkOutStudentAction(studentId, method = 'parent') {
-  const result = await checkOutStudent(studentId, method);
+async function checkOutStudentAction(studentId, method = 'parent', timestamp = null) {
+  const result = await checkOutStudent(studentId, method, timestamp);
   if (!result.success) return { success: false, message: result.error };
   return { success: true, verifyCode: result.data.verify_code };
 }
